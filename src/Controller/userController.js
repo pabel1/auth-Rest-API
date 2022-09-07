@@ -6,15 +6,15 @@ const { transporter } = require("../config/emailCongfig");
 // signUp function
 const signUpController = async (req, res) => {
   try {
-    const { firstname, lastname, email, password, confirmPassword, trams } =
+    const { firstname, lastname, email, password, confirmPassword } =
       req.body;
     if (
       firstname &&
       lastname &&
       email &&
       password &&
-      confirmPassword &&
-      trams
+      confirmPassword
+      // trams
     ) {
       if (password === confirmPassword) {
         const hashPassword = await bcrypt.hash(req.body.password, 10);
@@ -23,7 +23,7 @@ const signUpController = async (req, res) => {
           lastname: lastname,
           email: email,
           password: hashPassword,
-          trams: trams,
+          // trams: trams,
         });
         await user.save();
         const token = await jwt.sign(

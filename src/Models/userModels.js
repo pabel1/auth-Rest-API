@@ -21,10 +21,10 @@ const userSchema= mongoose.Schema({
         type:String,
         required: true,
     },
-    trams:{
-        type:String,
-        required: true,
-    },
+    // trams:{
+    //     type:String,
+    //     required: true,
+    // },
 })
 
 // model
