@@ -5,60 +5,68 @@ const { transporter } = require("../config/emailCongfig");
 
 // signUp function
 const signUpController = async (req, res) => {
-  try {
-    const { firstname, lastname, email, password, confirmPassword, trams } =
-      req.body;
-    if (
-      firstname &&
-      lastname &&
-      email &&
-      password &&
-      confirmPassword &&
-      trams
-    ) {
-      if (password === confirmPassword) {
-        const hashPassword = await bcrypt.hash(req.body.password, 10);
-        const user = new UserModel({
-          firstname: firstname,
-          lastname: lastname,
-          email: email,
-          password: hashPassword,
-          trams: trams,
-        });
-        await user.save();
-        const token = await jwt.sign(
-          {
-            email: user.email,
-            id: user._id,
-          },
-          process.env.JWT_TOKEN,
-          {
-            expiresIn: "2d",
-          }
-        );
-
-        res.status(200).json({
-          status: "success",
-          message: "Data insert Successful!",
-          access_token: token,
-        });
-      } else {
-        res.status(400).json({
-          status: failed,
-          message: "Fill Same Password!",
-        });
-      }
-    } else {
-      res.status(400).json({
-        status: failed,
-        message: "All field are Required!",
-      });
-    }
-  } catch (error) {
+  const { firstname, lastname, email, password, confirmPassword, trams } =
+    req.body;
+  const user = await UserModel.findOne({ email: email });
+  if (user) {
     res.status(500).json({
       status: "failed",
-      error: "Server side Error!",
+      message: "Email already exist!",
     });
+  } else {
+    try {
+      if (
+        firstname &&
+        lastname &&
+        email &&
+        password &&
+        confirmPassword &&
+        trams
+      ) {
+        if (password === confirmPassword) {
+          const hashPassword = await bcrypt.hash(req.body.password, 10);
+          const user = new UserModel({
+            firstname: firstname,
+            lastname: lastname,
+            email: email,
+            password: hashPassword,
+            trams: trams,
+          });
+          await user.save();
+          const token = await jwt.sign(
+            {
+              email: user.email,
+              id: user._id,
+            },
+            process.env.JWT_TOKEN,
+            {
+              expiresIn: "2d",
+            }
+          );
+
+          res.status(200).json({
+            status: "success",
+            message: "Data insert Successful!",
+            access_token: token,
+          });
+        } else {
+          res.status(400).json({
+            status: "failed",
+            message: "Fill Same Password!",
+          });
+        }
+      } else {
+        res.status(400).json({
+          status: "failed",
+          message: "All field are Required!",
+        });
+      }
+    } catch (message) {
+      res.status(500).json({
+        status: "failed",
+        message: "Server side Error!",
+      });
+    }
   }
 };
 
@@ -83,8 +91,9 @@ const loginController = async (req, res) => {
             expiresIn: "5d",
           }
         );
-        console.log(token);
+       
         res.status(200).json({
+          status:"success",
           message: "Login Success",
           access_token: token,
         });
@@ -153,7 +162,7 @@ const logedUser = async (req, res) => {
   } catch (error) {}
 };
 
-//  reset password by email
+//  reset password by email 
 const resetPassword = async (req, res) => {
   const { email } = req.body;
   if (email) {
@@ -169,20 +178,20 @@ const resetPassword = async (req, res) => {
           expiresIn: "20m",
         }
       );
-      const link=`http://localhost:3000/user/${user._id}/${token}`
-      
-      let info= await transporter.sendMail({
-        from:process.env.EMAIL_FROM,
-        to:user.email,
-        subject:"Reset Password Link",
-        html:`<a href=${link}> Click Here</a> to Reset Your Password `
-      })
-      console.log(info)
+      const link = `http://localhost:3000/user/resetpassword/${user._id}/${token}`;
+
+      // let info = await transporter.sendMail({
+      //   from: process.env.EMAIL_FROM,
+      //   to: user.email,
+      //   subject: "Reset Password Link",
+      //   html: `<a href=${link}> Click Here</a> to Reset Your Password `,
+      // });
+      console.log(link);
       res.status(200).json({
-        status:"success",
-        message:"password reset email sent ... please check your email!",
-        info:info,
-      })
+        status: "success",
+        message: "password reset email sent ... please check your email!",
+        // info: info,
+      });
     } else {
       res.status(500).json({
         status: "failed",
@@ -197,44 +206,45 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// reset password by click link 
+// reset password by click link
 
-const resetPasswordByLink=async (req,res)=>{
-    const {newPassword,confirmNewPassword}=req.body;
-    const {id,token}=req.params;
-    const user= await UserModel.findOne({id})
-    const new_secret=user._id + process.env.JWT_TOKEN
-    try {
-        jwt.verify(token,new_secret);
-        if(newPassword && confirmNewPassword){
-            if(newPassword === confirmNewPassword){
-                const newHashPassword= await bcrypt.hash(newPassword,10);
-                await UserModel.updateOne({id:user._id},{$set:{password:newHashPassword}})
-                res.status(200).json({
-                    status:"success",
-                    message:"Password Reset Successful!"
-                })
-
-            }else{
-                res.status(500).json({
-                    status:"failed",
-                    message:"Enter Same Password!"
-                })
-            }
-        }else{
-            res.status(500).json({
-                status:"failed",
-                message:"Fill All the Requirment First!"
-            })
-        }
-        
-    } catch (error) {
+const resetPasswordByLink = async (req, res) => {
+  const { newPassword, confirmNewPassword } = req.body;
+  const { id, token } = req.params;
+  const user = await UserModel.findOne({ id });
+  const new_secret = user._id + process.env.JWT_TOKEN;
+  try {
+    jwt.verify(token, new_secret);
+    if (newPassword && confirmNewPassword) {
+      if (newPassword === confirmNewPassword) {
+        const newHashPassword = await bcrypt.hash(newPassword, 10);
+        await UserModel.updateOne(
+          { id: user._id },
+          { $set: { password: newHashPassword } }
+        );
+        res.status(200).json({
+          status: "success",
+          message: "Password Reset Successful!",
+        });
+      } else {
         res.status(500).json({
-            status:"failed",
-            message:"Something wrong !"
-        })
+          status: "failed",
+          message: "Enter Same Password!",
+        });
+      }
+    } else {
+      res.status(500).json({
+        status: "failed",
+        message: "Fill All the Requirment First!",
+      });
     }
-}
+  } catch (error) {
+    res.status(500).json({
+      status: "failed",
+      message: "Something wrong !",
+    });
+  }
+};
 
 module.exports = {
   signUpController,
@@ -242,5 +252,5 @@ module.exports = {
   changePassword,
   logedUser,
   resetPassword,
-  resetPasswordByLink
+  resetPasswordByLink,
 };
